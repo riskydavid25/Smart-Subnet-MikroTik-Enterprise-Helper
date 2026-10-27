@@ -1,0 +1,405 @@
+--- /mnt/user-data/attachments/c0e6eec0-c5e7-5c92-8122-faee0520279b/659e5d93-index.html	2026-10-27 19:34:19.446993337 +0700
++++ index.html	2026-10-28 01:07:46.649008880 +0700
+@@ -61,6 +61,7 @@
+    <div><label class="lbl !mt-0" for="sz-g">Cadangan pertumbuhan (%)</label><input id="sz-g" type="number" min="0" value="20" class="inp"></div>
+   </div>
+   <label class="flex items-center gap-2 text-sm mt-3"><input type="checkbox" id="sz-gw" checked> Sisihkan 1 IP untuk gateway/router per subnet</label>
++  <label class="flex items-center gap-2 text-sm mt-2"><input type="checkbox" id="sz-p2p" checked> Link P2P: baris berawalan <code>P2P</code>/<code>PTP</code>/<code>Link</code> memakai /31 (RFC 3021), tanpa gateway &amp; cadangan</label>
+   <label class="lbl">Kebutuhan subnet</label>
+   <div class="overflow-x-auto"><div id="sz-rows"></div></div>
+   <div class="flex flex-wrap gap-2 mt-2"><button class="btn2" id="sz-add">+ Tambah baris</button><button class="btn" id="sz-go">Hitung</button></div>
+@@ -103,6 +104,50 @@
+  </div>
+ </section>
+ 
++<!-- 4b. IP PUBLIK -->
++<section id="p-pub" class="hidden">
++ <div class="card">
++  <h2 class="h2">Perencana IP Publik (ISP, NAT Pool, DMZ)</h2>
++  <p class="sub">Alokasikan blok publik dari ISP untuk gateway, NAT pool, dan server DMZ, lengkap dengan script RouterOS. Blok non-publik (privat, CGNAT, dokumentasi) diberi peringatan.</p>
++  <div class="grid sm:grid-cols-3 gap-3">
++   <div class="sm:col-span-2"><label class="lbl !mt-0" for="pb-base">Blok publik dari ISP (IP/prefix)</label><input id="pb-base" class="inp font-mono" placeholder="mis. 203.0.113.0/28" spellcheck="false"></div>
++   <div><label class="lbl !mt-0" for="pb-mode">Mode blok</label><select id="pb-mode" class="inp"><option value="routed">Routed (via link P2P dari ISP)</option><option value="onlink">On-link (langsung di segmen WAN)</option></select></div>
++   <div><label class="lbl" for="pb-nat">Jumlah IP NAT pool</label><input id="pb-nat" type="number" min="0" value="1" class="inp"></div>
++   <div><label class="lbl" for="pb-srv">Jumlah server publik (DMZ)</label><input id="pb-srv" type="number" min="0" value="4" class="inp"></div>
++   <div><label class="lbl" for="pb-g">Cadangan server (%)</label><input id="pb-g" type="number" min="0" value="25" class="inp"></div>
++   <div id="pb-r1" class="sm:col-span-3"><label class="lbl !mt-0" for="pb-wan">Link P2P WAN dari ISP: IP router/prefix (mode routed, opsional, /30 atau /31)</label><input id="pb-wan" class="inp font-mono sm:w-1/2" placeholder="mis. x.x.x.x/31" spellcheck="false"></div>
++   <div id="pb-r2" class="sm:col-span-3 hidden"><label class="lbl !mt-0" for="pb-isp">Gateway ISP (mode on-link; kosong = usable pertama)</label><input id="pb-isp" class="inp font-mono sm:w-1/2" placeholder="mis. IP usable pertama atau terakhir blok" spellcheck="false"></div>
++   <div><label class="lbl !mt-0" for="pb-wanif">Interface WAN</label><input id="pb-wanif" class="inp font-mono" value="ether1" spellcheck="false"></div>
++   <div><label class="lbl !mt-0" for="pb-dmzif">Interface DMZ (mode routed)</label><input id="pb-dmzif" class="inp font-mono" value="ether3" spellcheck="false"></div>
++   <div><label class="lbl !mt-0" for="pb-src">Subnet privat sumber NAT (opsional)</label><input id="pb-src" class="inp font-mono" placeholder="mis. 10.0.0.0/8" spellcheck="false"></div>
++  </div>
++  <div class="mt-3"><button class="btn" id="pb-go">Hitung Alokasi Publik</button></div>
++  <div class="err" id="pb-err"></div>
++  <div id="pb-notes" class="space-y-2"></div>
++  <div class="overflow-x-auto" id="pb-out"></div>
++  <div class="hidden" id="pb-act">
++   <textarea id="pb-sc" readonly rows="12" class="inp font-mono text-xs mt-3"></textarea>
++   <div class="flex flex-wrap gap-2 mt-2"><button class="btn2" data-cp="pb">📋 Copy tabel</button><button class="btn2" id="pb-cp">📋 Copy script</button><button class="btn2" id="pb-dl">⬇ Unduh .rsc</button></div>
++  </div>
++ </div>
++</section>
++
++<!-- 4c. OVERLAP / IPAM -->
++<section id="p-ov" class="hidden">
++ <div class="card">
++  <h2 class="h2">Overlap Checker &amp; Ruang Kosong (IPAM)</h2>
++  <p class="sub">Tempel daftar alokasi, satu entri per baris: <span class="font-mono">label IP/prefix</span> (label opsional, baris berawalan # diabaikan). Tool mendeteksi tabrakan antar-blok dan menampilkan ruang kosong di blok induk.</p>
++  <label class="lbl !mt-0" for="ov-parent">Blok induk (opsional)</label>
++  <input id="ov-parent" class="inp font-mono sm:w-1/2" placeholder="mis. 10.10.0.0/16" spellcheck="false">
++  <label class="lbl" for="ov-in">Daftar alokasi</label>
++  <textarea id="ov-in" rows="10" class="inp font-mono text-xs" placeholder="HQ-Server 10.10.0.0/24&#10;HQ-User 10.10.1.0/23&#10;Cabang-A 10.10.2.0/24" spellcheck="false"></textarea>
++  <div class="mt-3"><button class="btn" id="ov-go">Periksa</button></div>
++  <div class="err" id="ov-err"></div>
++  <div class="overflow-x-auto" id="ov-out"></div>
++  <div class="flex flex-wrap gap-2 mt-3 hidden" id="ov-act"><button class="btn2" data-cp="ov">📋 Copy tabel alokasi</button></div>
++ </div>
++</section>
++
+ <!-- 5. MIKROTIK -->
+ <section id="p-mt" class="hidden">
+  <div class="card">
+@@ -117,10 +162,14 @@
+    <div>
+     <label class="flex items-center gap-2 text-sm mt-4"><input type="checkbox" id="mt-dhcp"> Buat DHCP Server (pool, server, network) per interface</label>
+     <input id="mt-dns" class="inp font-mono mt-2" placeholder="DNS server (kosong = IP router sendiri)" spellcheck="false">
++    <input id="mt-res" type="number" min="0" value="10" class="inp mt-2" placeholder="Reserved static di awal subnet" aria-label="Jumlah IP awal subnet yang dicadangkan untuk static (termasuk gateway)" title="Jumlah IP awal tiap subnet yang dikeluarkan dari pool DHCP (untuk gateway, server, printer, AP)">
+    </div>
+    <div>
+     <label class="flex items-center gap-2 text-sm mt-4"><input type="checkbox" id="mt-nat"> Buat NAT masquerade</label>
+     <input id="mt-wan" class="inp font-mono mt-2" placeholder="Interface WAN/out-interface, mis. ether1" spellcheck="false">
++    <label class="flex items-center gap-2 text-sm mt-3"><input type="checkbox" id="mt-fw" checked> Firewall baseline (input/forward + interface list LAN/WAN)</label>
++    <label class="flex items-center gap-2 text-sm mt-2"><input type="checkbox" id="mt-iso"> Isolasi antar-subnet (drop LAN→LAN; pasang rule allow sebelumnya)</label>
++    <input id="mt-mgmt" class="inp font-mono mt-2" placeholder="Interface manajemen tambahan masuk list LAN (pisah koma), mis. ether5" spellcheck="false">
+    </div>
+   </div>
+   <label class="lbl">Static route (opsional)</label>
+@@ -160,6 +209,20 @@
+ const mk=c=>c===0?0:(0xFFFFFFFF<<(32-c))>>>0;
+ const bin=n=>i2s(n).split('.').map(o=>(+o).toString(2).padStart(8,'0')).join('.');
+ const fmt=n=>n.toLocaleString('id-ID');
++const OKIF=s=>/^[A-Za-z0-9_.\-]{1,32}$/.test(s);
++const isP2P=n=>/^(p2p|ptp|link)/i.test(n||'');
++const NETS=[['0.0.0.0',8,'This-network (RFC 1122)','spec'],['10.0.0.0',8,'Privat RFC 1918','priv'],['100.64.0.0',10,'CGNAT RFC 6598 (shared address space)','cgnat'],['127.0.0.0',8,'Loopback','spec'],['169.254.0.0',16,'Link-local (APIPA)','spec'],['172.16.0.0',12,'Privat RFC 1918','priv'],['192.0.0.0',24,'IETF protocol assignment','spec'],['192.0.2.0',24,'Dokumentasi TEST-NET-1','doc'],['192.168.0.0',16,'Privat RFC 1918','priv'],['198.18.0.0',15,'Benchmark RFC 2544','spec'],['198.51.100.0',24,'Dokumentasi TEST-NET-2','doc'],['203.0.113.0',24,'Dokumentasi TEST-NET-3','doc'],['224.0.0.0',4,'Multicast','spec'],['240.0.0.0',4,'Reserved (class E)','spec']].map(([a,c,t,k])=>({net:s2i(a),c,t,k,end:s2i(a)+2**(32-c)-1}));
++const cls=ip=>NETS.find(n=>ip>=n.net&&ip<=n.end)||{t:'Publik (routable)',k:'pub'};
++function blockCls(net,bc){
++ const w=NETS.find(n=>net>=n.net&&bc<=n.end);if(w)return w;
++ const ov=NETS.filter(n=>net<=n.end&&bc>=n.net);
++ if(ov.length)return{t:'Campuran: beririsan dengan '+[...new Set(ov.map(x=>x.t))].join(', '),k:'mix'};
++ return{t:'Publik (routable)',k:'pub'};
++}
++const privNote=(net,bc)=>{const c=blockCls(net,bc);if(c.k==='priv')return'';
++ return`<p class="text-sm text-amber-600 dark:text-amber-400 mt-2">⚠ Blok induk bukan RFC 1918: ${esc(c.t)}.${c.k==='pub'?' Untuk alokasi publik (NAT pool, DMZ, link ISP) gunakan tab IP Publik.':c.k==='cgnat'?' Hindari 100.64.0.0/10 untuk LAN jika WAN ISP memakai CGNAT.':''}</p>`};
++function cidrs(s,e){const o=[];while(s<=e){let z=2**32;while(z>1&&(s%z!==0||z>e-s+1))z/=2;o.push({net:s,c:32-Math.log2(z),size:z});s+=z}return o}
++const rng=(a,b)=>a===b?i2s(a):`${i2s(a)}-${i2s(b)}`;
+ 
+ function info(ip,c){
+  const m=mk(c),w=(~m)>>>0,net=(ip&m)>>>0,bc=(net|w)>>>0,tot=2**(32-c);let f,l,u;
+@@ -180,9 +243,9 @@
+  if(c===null||c===undefined||c==='')return{e:'Sertakan prefix (mis. /24) atau subnet mask.'};
+  return{ip,c};
+ }
+-const sizeOf=(hosts,gw)=>{const bits=Math.max(2,Math.ceil(Math.log2(hosts+gw+2)));return{bits,size:2**bits,c:32-bits}};
++const sizeOf=(hosts,gw,p2p)=>{if(p2p)return{bits:1,size:2,c:31};const bits=Math.max(2,Math.ceil(Math.log2(hosts+gw+2)));return{bits,size:2**bits,c:32-bits}};
+ function alloc(start,end,reqs,gw){
+- const list=reqs.map((r,i)=>({...r,i,...sizeOf(r.hosts,gw)})).sort((a,b)=>b.size-a.size||a.i-b.i);
++ const list=reqs.map((r,i)=>({...r,i,...sizeOf(r.hosts,r.gw??gw,r.p2p)})).sort((a,b)=>b.size-a.size||a.i-b.i);
+  let cur=start;const out=[];
+  for(const r of list){
+   cur=Math.ceil(cur/r.size)*r.size;
+@@ -214,7 +277,7 @@
+ (()=>{let t;try{t=localStorage.getItem('theme')}catch(e){}
+  if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')})();
+ $('#theme').onclick=()=>{const d=document.documentElement.classList.toggle('dark');try{localStorage.setItem('theme',d?'dark':'light')}catch(e){}};
+-const TABS=[['calc','🧮 Kalkulator'],['sz','📐 Sizing Host'],['ms','🏢 Multi-Subnet'],['ck','🔍 IP Checker'],['mt','⚙ MikroTik'],['ts','🩺 Troubleshooting']];
++const TABS=[['calc','🧮 Kalkulator'],['sz','📐 Sizing Host'],['ms','🏢 Multi-Subnet'],['pub','🌐 IP Publik'],['ov','🧩 Overlap/IPAM'],['ck','🔍 IP Checker'],['mt','⚙ MikroTik'],['ts','🩺 Troubleshooting']];
+ $('#tabs').innerHTML=TABS.map(t=>`<button class="tab" data-t="${t[0]}">${t[1]}</button>`).join('');
+ function go(t){TABS.forEach(x=>$('#p-'+x[0]).classList.toggle('hidden',x[0]!==t));$$('#tabs .tab').forEach(b=>b.classList.toggle('on',b.dataset.t===t))}
+ $('#tabs').onclick=e=>{const b=e.target.closest('[data-t]');if(b)go(b.dataset.t)};
+@@ -229,10 +292,10 @@
+  if(/[\/\s]/.test(t))$('#c-c').value=r.c;
+  if(r.c<0||r.c>32){er.textContent='⚠ Prefix harus 0–32.';return}
+  const d=info(r.ip,r.c);
+- const T=[['Network Address',i2s(d.net)],['Broadcast Address',d.c===32?'— (host route)':i2s(d.bc)],['Subnet Mask',i2s(d.m)],['Wildcard Mask',i2s(d.w)],
++ const T=[['Network Address',i2s(d.net)],['Broadcast Address',d.c===32?'— (host route)':d.c===31?'— (RFC 3021, tanpa broadcast)':i2s(d.bc)],['Subnet Mask',i2s(d.m)],['Wildcard Mask',i2s(d.w)],
+   ['IP Usable Pertama',i2s(d.f)],['IP Usable Terakhir',i2s(d.l)],['Total Alamat',fmt(d.tot)],['Total Host Usable',fmt(d.u)],
+-  ['CIDR',`${i2s(d.net)}/${d.c}`],['Subnet Mask (Biner)',bin(d.m)]];
+- out.innerHTML=T.map(([k,v])=>`<div class="tile ${k.includes('Biner')?'col-span-2':''}" data-copy="${esc(v)}" tabindex="0"><div class="text-xs text-slate-500 dark:text-slate-400">${k}</div><div class="font-mono font-bold text-sm break-all">${esc(v)}</div></div>`).join('');
++  ['CIDR',`${i2s(d.net)}/${d.c}`],['Subnet Mask (Biner)',bin(d.m)],['Klasifikasi',blockCls(d.net,d.bc).t]];
++ out.innerHTML=T.map(([k,v])=>`<div class="tile ${k.includes('Biner')||k==='Klasifikasi'?'col-span-2':''}" data-copy="${esc(v)}" tabindex="0"><div class="text-xs text-slate-500 dark:text-slate-400">${k}</div><div class="font-mono font-bold text-sm break-all">${esc(v)}</div></div>`).join('');
+ }
+ $('#c-ip').oninput=calc;$('#c-c').oninput=()=>{$('#c-ip').value=$('#c-ip').value.trim().split(/[\/\s]/)[0];calc()};
+ document.addEventListener('click',e=>{const t=e.target.closest('[data-copy]');if(t)copyText(t.dataset.copy)});
+@@ -253,7 +316,9 @@
+   if(!r.n&&!r.h)continue;
+   const h=Number(r.h);
+   if(!Number.isInteger(h)||h<1||h>2**30){er.textContent=`⚠ Jumlah host pada baris ${i+1} harus bilangan bulat ≥ 1.`;return}
+-  reqs.push({name:r.n||`Subnet ${i+1}`,h,hosts:Math.ceil(h*(1+g/100))});
++  const p2p=$('#sz-p2p').checked&&isP2P(r.n);
++  if(p2p&&h>2){er.textContent=`⚠ Baris ${i+1}: link P2P (/31) hanya untuk 2 host. Ubah jumlah host atau nama baris.`;return}
++  reqs.push({name:r.n||`Subnet ${i+1}`,h,hosts:p2p?2:Math.ceil(h*(1+g/100)),p2p});
+  }
+  if(!reqs.length){er.textContent='⚠ Isi minimal satu kebutuhan subnet.';return}
+  const bt=$('#sz-base').value.trim();let h,rows,plan=null;
+@@ -264,11 +329,11 @@
+   plan=[];
+   rows=r.out.sort((a,b)=>a.net-b.net).map(x=>{const d=info(x.net,x.c),g1=gw?d.f:d.f;
+    plan.push({cm:x.name,if:'',ad:`${i2s(g1)}/${d.c}`,v:''});
+-   return[x.name,fmt(x.h),fmt(x.hosts),'/'+d.c,i2s(d.m),`${i2s(d.net)}/${d.c}`,gw?i2s(d.f):'-',`${i2s(d.f)} – ${i2s(d.l)}`,i2s(d.bc),fmt(d.u-gw)]});
+-  out.innerHTML=tbl(h,rows)+`<p class="sub mt-2">Terpakai ${fmt(r.next-bi.net)} dari ${fmt(bi.tot)} alamat. Sisa ${fmt(bi.tot-(r.next-bi.net))} alamat${r.next<=bi.bc?`, mulai dari ${i2s(r.next)}`:''}. Subnet diurutkan dari terbesar agar efisien.</p>`;
++   return[x.name,fmt(x.h),fmt(x.hosts),'/'+d.c,i2s(d.m),`${i2s(d.net)}/${d.c}`,gw&&!x.p2p?i2s(d.f):'-',`${i2s(d.f)} – ${i2s(d.l)}`,d.c>=31?'-':i2s(d.bc),fmt(d.u-(x.p2p?0:gw))]});
++  out.innerHTML=tbl(h,rows)+`<p class="sub mt-2">Terpakai ${fmt(r.next-bi.net)} dari ${fmt(bi.tot)} alamat. Sisa ${fmt(bi.tot-(r.next-bi.net))} alamat${r.next<=bi.bc?`, mulai dari ${i2s(r.next)}`:''}. Subnet diurutkan dari terbesar agar efisien.</p>`+privNote(bi.net,bi.bc);
+  }else{
+   h=['Nama','Host','+Cadangan','Prefix','Subnet Mask','Kapasitas Host','Terpakai'];
+-  rows=reqs.map(x=>{const s=sizeOf(x.hosts,gw),cap=s.size-2-gw;return[x.name,fmt(x.h),fmt(x.hosts),'/'+s.c,i2s(mk(s.c)),fmt(cap),(x.hosts/cap*100).toFixed(1)+'%']});
++  rows=reqs.map(x=>{const s=sizeOf(x.hosts,gw,x.p2p),cap=x.p2p?2:s.size-2-gw;return[x.name,fmt(x.h),fmt(x.hosts),'/'+s.c,i2s(mk(s.c)),fmt(cap),(x.hosts/cap*100).toFixed(1)+'%']});
+   out.innerHTML=tbl(h,rows)+'<p class="sub mt-2">Isi blok induk di atas untuk mendapat alokasi IP otomatis.</p>';
+  }
+  last.sz={h,rows,plan};$('#sz-act').classList.remove('hidden');$('#sz-mt').classList.toggle('hidden',!plan);
+@@ -292,7 +357,7 @@
+   plan.push({cm:name,if:vid?`vlan${vid}`:'',ad:`${i2s(d.f)}/${nc}`,v:vid||''});
+  }
+  const spare=2**(nc-b.c)-n;
+- out.innerHTML=tbl(h,rows)+`<p class="sub mt-2">Setiap subnet /${nc} (${fmt(size-2)} host usable).${spare?` Sisa ${fmt(spare)} subnet /${nc} belum terpakai untuk ekspansi.`:''}</p>`;
++ out.innerHTML=tbl(h,rows)+`<p class="sub mt-2">Setiap subnet /${nc} (${fmt(size-2)} host usable).${spare?` Sisa ${fmt(spare)} subnet /${nc} belum terpakai untuk ekspansi.`:''}</p>`+privNote(bi.net,bi.bc);
+  last.ms={h,rows,plan};$('#ms-act').classList.remove('hidden');
+ };
+ $('#ms-mt').onclick=()=>last.ms&&loadMT(last.ms.plan);
+@@ -316,6 +381,9 @@
+  else if(inA||inB)head=['warn',`⚠ Mask tidak konsisten: ${inA?'A menganggap B lokal, tetapi B menganggap A di luar subnet':'B menganggap A lokal, tetapi A menganggap B di luar subnet'}. Komunikasi akan gagal atau hanya satu arah. Samakan subnet mask.`];
+  else head=['info','ℹ Beda subnet. Komunikasi butuh routing lewat gateway/router.'];
+  add(...head);
++ {const ca=cls(a.ip),cb=cls(b.ip);add('info',`Klasifikasi: A = ${ca.t}; B = ${cb.t}.`);
++  if(ca.k!==cb.k&&(ca.k==='pub'||cb.k==='pub'))add('warn','A dan B berbeda domain (privat vs publik): komunikasi lintas batas ini memerlukan NAT atau routing publik, bukan routing internal.');
++  if(ca.k==='cgnat'||cb.k==='cgnat')add('info','100.64.0.0/10 adalah ruang CGNAT (RFC 6598). Jangan dipakai sebagai LAN privat jika WAN ISP juga CGNAT (risiko overlap).')}
+  if(bad(a))add('bad',`IP A (${i2s(a.ip)}) adalah alamat ${a.ip===a.net?'network':'broadcast'} subnet /${a.c}.`);
+  if(bad(b)&&b.ip!==a.ip)add('bad',`IP B (${i2s(b.ip)}) adalah alamat ${b.ip===b.net?'network':'broadcast'} subnet /${b.c}.`);
+  if(gt){
+@@ -333,28 +401,159 @@
+ }
+ ['#ck-a','#ck-b','#ck-g'].forEach(s=>$(s).oninput=chk);
+ 
++/* ---------- 4b. IP publik ---------- */
++$('#pb-mode').onchange=()=>{const r=$('#pb-mode').value==='routed';$('#pb-r1').classList.toggle('hidden',!r);$('#pb-r2').classList.toggle('hidden',r)};
++$('#pb-go').onclick=()=>{
++ const er=$('#pb-err'),out=$('#pb-out'),nt=$('#pb-notes'),sc=$('#pb-sc');er.textContent='';out.innerHTML='';nt.innerHTML='';sc.value='';last.pb=null;$('#pb-act').classList.add('hidden');
++ const b=parseNet($('#pb-base').value,null);if(b.e){er.textContent='⚠ Blok publik: '+b.e;return}
++ const bi=info(b.ip,b.c),mode=$('#pb-mode').value;
++ const nat=Math.floor(Number($('#pb-nat').value)),srv=Math.floor(Number($('#pb-srv').value)),g=Math.max(0,Number($('#pb-g').value)||0);
++ if(!(nat>=0)||!(srv>=0)){er.textContent='⚠ Jumlah NAT pool dan server harus bilangan ≥ 0.';return}
++ const wif=$('#pb-wanif').value.trim()||'ether1',dif=$('#pb-dmzif').value.trim()||'ether3';
++ if(!OKIF(wif)||!OKIF(dif)){er.textContent='⚠ Nama interface WAN/DMZ tidak valid.';return}
++ let src=null;const st=$('#pb-src').value.trim();
++ if(st){const s=parseNet(st,null);if(s.e){er.textContent='⚠ Subnet privat sumber NAT: '+s.e;return}const si=info(s.ip,s.c);src=`${i2s(si.net)}/${si.c}`}
++ const hg=Math.ceil(srv*(1+g/100)),notes=[],S=[`# Alokasi IP publik ${i2s(bi.net)}/${bi.c} (${mode==='routed'?'routed':'on-link'}) — periksa ulang dengan data dari ISP sebelum diterapkan`],rows=[];
++ const bc=blockCls(bi.net,bi.bc);
++ if(bc.k!=='pub')notes.push(['warn',`Blok ini bukan IP publik routable: ${bc.t}. Periksa kembali alokasi dari ISP.`]);
++ const natRule=(a,z,comment)=>`/ip firewall nat add chain=srcnat ${src?`src-address=${src} `:''}out-interface=${wif} action=src-nat to-addresses=${rng(a,z)} comment="${comment}"`;
++ let h;
++ if(mode==='onlink'){
++  if(bi.c>30){er.textContent='⚠ Blok on-link minimal /30 (gateway ISP + IP router).';return}
++  let gw=bi.f;const gt=$('#pb-isp').value.trim();
++  if(gt){const x=s2i(gt);if(x===null||x<bi.f||x>bi.l){er.textContent='⚠ Gateway ISP harus berada dalam range usable blok.';return}gw=x}
++  if(gw!==bi.f&&gw!==bi.l){er.textContent='⚠ Gateway ISP umumnya IP usable pertama atau terakhir. Isi salah satunya atau kosongkan.';return}
++  let lo=bi.f,hi=bi.l;if(gw===bi.f)lo++;else hi--;
++  const need=1+nat+hg;
++  if(hi-lo+1<need){er.textContent=`⚠ Blok tidak cukup: butuh ${fmt(need)} IP (1 router + ${nat} NAT + ${hg} server), tersedia ${fmt(hi-lo+1)}.`;return}
++  const rIp=lo,nS=lo+1,nE=lo+nat,sS=nE+1,sE=nE+hg;
++  h=['Peran','Alamat / Range','Jumlah','Keterangan'];
++  rows.push(['Network',`${i2s(bi.net)}/${bi.c}`,'1','Dipesan, tidak dipakai host']);
++  rows.push(['Gateway ISP',i2s(gw),'1','Next-hop default route']);
++  rows.push(['IP WAN Router',`${i2s(rIp)}/${bi.c}`,'1','Interface '+wif]);
++  if(nat>0)rows.push(['NAT Pool',rng(nS,nE),fmt(nat),'src-nat keluar']);
++  if(hg>0)rows.push(['Server publik',rng(sS,sE),fmt(hg),`${srv} server + ${hg-srv} cadangan`]);
++  if(sE<hi)rows.push(['Sisa (cadangan)',rng(sE+1,hi),fmt(hi-sE),'Belum dialokasi']);
++  rows.push(['Broadcast',i2s(bi.bc),'1','Dipesan']);
++  notes.push(['info','Pada mode on-link, server publik berbagi segmen L2 dengan WAN ISP. Untuk isolasi DMZ yang benar, minta ISP me-route blok (mode Routed) atau pakai dst-nat ke DMZ privat.']);
++  S.push(`/ip address add address=${i2s(rIp)}/${bi.c} interface=${wif} comment="WAN publik"`);
++  if(nat>0&&nat<=64)for(let i=0;i<nat;i++)S.push(`/ip address add address=${i2s(nS+i)}/${bi.c} interface=${wif} comment="NAT pool (ARP)"`);
++  else if(nat>64)S.push(`# NAT pool ${rng(nS,nE)} terlalu besar untuk dibuat otomatis: tambahkan alamatnya ke ${wif} atau aktifkan proxy-arp`);
++  S.push(`/ip route add dst-address=0.0.0.0/0 gateway=${i2s(gw)} comment="Default route ISP"`);
++  S.push(nat>0?natRule(nS,nE,'NAT pool publik'):`/ip firewall nat add chain=srcnat ${src?`src-address=${src} `:''}out-interface=${wif} action=masquerade comment="NAT Internet"`);
++ }else{
++  const reqs=[];
++  if(hg>0)reqs.push({name:'DMZ (server publik)',h:srv,hosts:hg,gw:1});
++  if(nat>0)reqs.push({name:'NAT Pool',h:nat,hosts:nat,gw:0});
++  if(!reqs.length){er.textContent='⚠ Isi minimal satu kebutuhan: NAT pool atau server publik.';return}
++  const r=alloc(bi.net,bi.bc,reqs,0);if(r.e){er.textContent='⚠ '+r.e;return}
++  h=['Peran','Network/CIDR','Subnet Mask','Gateway','Range Usable','Broadcast','Kapasitas'];
++  let wan=null;const wt=$('#pb-wan').value.trim();
++  if(wt){
++   const p=parseNet(wt,null);if(p.e){er.textContent='⚠ Link P2P WAN: '+p.e;return}
++   const d=info(p.ip,p.c);
++   if(d.c!==30&&d.c!==31){er.textContent='⚠ Link P2P WAN seharusnya /30 atau /31.';return}
++   if(d.c===30&&(d.ip===d.net||d.ip===d.bc)){er.textContent='⚠ IP router pada link /30 adalah alamat network/broadcast.';return}
++   const peer=d.c===31?(d.ip^1)>>>0:d.f+d.l-d.ip,k=cls(d.ip);
++   if(k.k!=='pub')notes.push(['warn',`IP link WAN ${i2s(d.ip)} bukan publik (${k.t}). Jika ISP memakai CGNAT, blok publik hanya berfungsi bila ISP benar-benar me-route-nya ke link ini.`]);
++   wan={ip:d.ip,c:d.c,peer};
++   rows.push(['Link WAN P2P (dari ISP)',`${i2s(d.net)}/${d.c}`,i2s(d.m),`${i2s(peer)} (peer ISP)`,`${i2s(d.f)} – ${i2s(d.l)}`,d.c===31?'-':i2s(d.bc),'2']);
++  }
++  const sorted=r.out.sort((a,b)=>a.net-b.net);let dmz=null,pool=null;
++  for(const x of sorted){
++   const d=info(x.net,x.c),isN=x.gw===0;
++   if(isN)pool=d;else dmz=d;
++   rows.push([x.name,`${i2s(d.net)}/${d.c}`,i2s(d.m),isN?'-':i2s(d.f),isN?`${i2s(d.f)} – ${i2s(d.l)}`:`${i2s(d.f+1)} – ${i2s(d.l)}`,i2s(d.bc),fmt(isN?d.u:d.u-1)]);
++  }
++  if(r.next<=bi.bc)for(const c of cidrs(r.next,bi.bc)){const d=info(c.net,c.c);rows.push(['Cadangan (belum dialokasi)',`${i2s(d.net)}/${d.c}`,i2s(d.m),'-',c.c>=31?`${i2s(d.f)} – ${i2s(d.l)}`:`${i2s(d.f)} – ${i2s(d.l)}`,c.c>=31?'-':i2s(d.bc),fmt(d.u)])}
++  if(wan){S.push(`/ip address add address=${i2s(wan.ip)}/${wan.c} interface=${wif} comment="WAN P2P ISP"`,`/ip route add dst-address=0.0.0.0/0 gateway=${i2s(wan.peer)} comment="Default route ISP"`)}
++  else S.push('# Isi IP link P2P WAN dari ISP untuk membuat alamat WAN dan default route otomatis');
++  if(dmz){
++   S.push(`/ip address add address=${i2s(dmz.f)}/${dmz.c} interface=${dif} comment="DMZ publik"`,
++    `# Template firewall DMZ (sesuaikan port). Rule accept otomatis disisipkan sebelum drop-rule baseline (jika ada); jangan masukkan ${dif} ke interface list LAN.`,
++    `:do { /ip firewall filter add chain=forward action=accept in-interface=${wif} out-interface=${dif} protocol=tcp dst-port=80,443 comment="WAN->DMZ web" place-before=[find where comment="forward: drop WAN->LAN tanpa dst-nat"] } on-error={ /ip firewall filter add chain=forward action=accept in-interface=${wif} out-interface=${dif} protocol=tcp dst-port=80,443 comment="WAN->DMZ web" }`,
++    `/ip firewall filter add chain=forward action=drop in-interface=${wif} out-interface=${dif} comment="WAN->DMZ drop lainnya"`);
++   if(src)S.push(`/ip firewall filter add chain=forward action=drop in-interface=${dif} dst-address=${src} comment="DMZ->LAN drop"`);
++   else S.push(`# Tambahkan rule drop DMZ->LAN (isi "Subnet privat sumber NAT" agar dibuat otomatis)`);
++  }
++  if(pool)S.push(natRule(pool.f,pool.l,'NAT pool publik'));
++  S.push(`/ip route add dst-address=${i2s(bi.net)}/${bi.c} type=blackhole distance=240 comment="Anti routing-loop blok publik"`);
++ }
++ nt.innerHTML=notes.map(([k,t])=>`<div class="border-l-4 rounded-lg p-3 text-sm ${k==='warn'?'border-amber-500 bg-amber-50 dark:bg-amber-950/40':'border-sky-500 bg-sky-50 dark:bg-sky-950/40'}">${k==='warn'?'⚠ ':'ℹ '}${esc(t)}</div>`).join('');
++ out.innerHTML=tbl(h,rows);sc.value=S.join('\n');last.pb={h,rows};$('#pb-act').classList.remove('hidden');
++};
++$('#pb-cp').onclick=()=>$('#pb-sc').value?copyText($('#pb-sc').value):toast('Belum ada script');
++$('#pb-dl').onclick=()=>$('#pb-sc').value?dl('public-ip.rsc',$('#pb-sc').value):toast('Belum ada script');
++
++/* ---------- 4c. overlap / IPAM ---------- */
++$('#ov-go').onclick=()=>{
++ const er=$('#ov-err'),out=$('#ov-out');er.textContent='';out.innerHTML='';last.ov=null;$('#ov-act').classList.add('hidden');
++ const ent=[],bad=[];
++ $('#ov-in').value.split(/\r?\n/).forEach((ln,i)=>{
++  const t=ln.replace(/#.*$/,'').trim();if(!t)return;
++  const m=t.match(/(\d{1,3}(?:\.\d{1,3}){3})\s*\/\s*(\d{1,2})\s*$/);
++  if(!m){bad.push(`Baris ${i+1}: format tidak dikenali, gunakan "label IP/prefix"`);return}
++  const p=parseNet(m[1]+'/'+m[2],null);if(p.e){bad.push(`Baris ${i+1}: ${p.e}`);return}
++  const d=info(p.ip,p.c);
++  ent.push({label:t.slice(0,m.index).replace(/[\s,;]+$/,'')||`Entri ${ent.length+1}`,net:d.net,bc:d.bc,c:d.c,tot:d.tot,norm:d.ip!==d.net});
++ });
++ if(bad.length){er.textContent='⚠ '+bad.slice(0,5).join('; ')+(bad.length>5?` (+${bad.length-5} lagi)`:'');return}
++ if(!ent.length){er.textContent='⚠ Isi minimal satu entri.';return}
++ if(ent.length>2000){er.textContent='⚠ Maksimal 2000 entri.';return}
++ let P=null;const pt=$('#ov-parent').value.trim();
++ if(pt){const p=parseNet(pt,null);if(p.e){er.textContent='⚠ Blok induk: '+p.e;return}P=info(p.ip,p.c)}
++ const s=[...ent].sort((a,b)=>a.net-b.net||b.bc-a.bc),msg=new Map(ent.map(e=>[e,[]]));let nc=0,cut=false;
++ outer:for(let i=0;i<s.length;i++)for(let j=i+1;j<s.length&&s[j].net<=s[i].bc;j++){
++  const same=s[j].net===s[i].net&&s[j].bc===s[i].bc;
++  msg.get(s[i]).push(`${same?'identik dengan':'mencakup'} ${s[j].label}`);msg.get(s[j]).push(`${same?'identik dengan':'di dalam'} ${s[i].label}`);
++  if(++nc>=500){cut=true;break outer}
++ }
++ const h=['Label','CIDR','Rentang','Alamat','Klasifikasi','Status'];
++ const rows=ent.map(e=>{const st=[...msg.get(e)];if(P&&(e.net<P.net||e.bc>P.bc))st.push('di luar blok induk');
++  return[e.label,`${i2s(e.net)}/${e.c}${e.norm?' (dinormalkan)':''}`,`${i2s(e.net)} – ${i2s(e.bc)}`,fmt(e.tot),blockCls(e.net,e.bc).t,st.length?'❌ '+st.slice(0,3).join('; ')+(st.length>3?` (+${st.length-3})`:''):'✅ OK']});
++ const bads=rows.filter(r=>r[5][0]==='❌').length;
++ let html=`<p class="sub mt-2">${ent.length} entri, ${bads} bermasalah${cut?' (daftar konflik dipotong di 500 pasang)':''}.</p>`+tbl(h,rows);
++ const kinds=new Set(ent.map(e=>blockCls(e.net,e.bc).k));
++ if(kinds.has('pub')&&kinds.has('priv'))html+='<p class="text-sm text-amber-600 dark:text-amber-400 mt-2">⚠ Daftar mencampur blok privat dan publik. Pastikan memang dua domain terpisah (LAN vs alokasi ISP).</p>';
++ if(P){
++  let cur=P.net,used=0,big=0;const fr=[];
++  for(const e of s){if(e.net<P.net||e.bc>P.bc||e.bc<cur)continue;if(e.net>cur)fr.push([cur,e.net-1]);used+=e.bc-Math.max(e.net,cur)+1;cur=e.bc+1}
++  if(cur<=P.bc)fr.push([cur,P.bc]);
++  const frows=[];fr.forEach(([a,z])=>cidrs(a,z).forEach(c=>{big=Math.max(big,c.size);const d=info(c.net,c.c);frows.push([`${i2s(d.net)}/${d.c}`,`${i2s(d.net)} – ${i2s(d.bc)}`,fmt(d.tot)])}));
++  html+=`<h3 class="font-bold mt-4">Ruang kosong di ${i2s(P.net)}/${P.c}</h3><p class="sub">Terpakai ${fmt(used)} dari ${fmt(P.tot)} alamat (${(used/P.tot*100).toFixed(1)}%). Blok kosong terbesar: ${big?'/'+(32-Math.log2(big)):'-'}.</p>`+(frows.length?tbl(['Blok bebas (CIDR)','Rentang','Alamat'],frows):'<p class="sub">Tidak ada ruang kosong.</p>');
++ }
++ out.innerHTML=html;last.ov={h,rows};$('#ov-act').classList.remove('hidden');
++};
++
+ /* ---------- 5. mikrotik ---------- */
+ function genMT(){
+  const er=$('#mt-err'),E=[],q=s=>String(s).replace(/["\\]/g,"'").trim(),parent=$('#mt-parent').value.trim();
+- const okIf=s=>/^[A-Za-z0-9_.\-]{1,32}$/.test(s),vl=[],ad=[],pl=[],dh=[],rt=[];
++ const vl=[],ad=[],pl=[],dh=[],rt=[],lan=[];
+  const dnsT=$('#mt-dns').value.trim();let dns=null;
+  if(dnsT){dns=s2i(dnsT);if(dns===null){er.textContent='⚠ Format DNS server salah.';return}}
++ const dhcpOn=$('#mt-dhcp').checked,natOn=$('#mt-nat').checked,fwOn=$('#mt-fw').checked,isoOn=$('#mt-iso').checked,w=$('#mt-wan').value.trim();
++ const resN=Math.max(0,Math.floor(Number($('#mt-res').value)||0));
+  const rows=readRows($('#mt-rows')).filter(r=>r.cm||r.if||r.ad||r.v);
+  rows.forEach((r,i)=>{
+   const n=`Interface baris ${i+1}`;
+-  if(!okIf(r.if)){E.push(`${n}: nama interface kosong/tidak valid`);return}
++  if(!OKIF(r.if)){E.push(`${n}: nama interface kosong/tidak valid`);return}
+   const p=parseNet(r.ad,null);if(p.e){E.push(`${n}: ${p.e}`);return}
+   const d=info(p.ip,p.c);
+   if(d.c<31&&(d.ip===d.net||d.ip===d.bc)){E.push(`${n}: ${i2s(d.ip)} adalah alamat network/broadcast`);return}
+   const cm=q(r.cm||r.if);
+   if(r.v){const v=Number(r.v);
+    if(!Number.isInteger(v)||v<1||v>4094){E.push(`${n}: VLAN ID harus 1–4094`);return}
+-   if(!okIf(parent)){E.push(`${n}: isi interface induk VLAN`);return}
++   if(!OKIF(parent)){E.push(`${n}: isi interface induk VLAN`);return}
+    vl.push(`/interface vlan add name=${r.if} vlan-id=${v} interface=${parent} comment="${cm}"`)}
+   ad.push(`/ip address add address=${i2s(d.ip)}/${d.c} interface=${r.if} comment="${cm}"`);
+-  if($('#mt-dhcp').checked){
+-   const rg=[];if(d.ip>d.f)rg.push(`${i2s(d.f)}-${i2s(d.ip-1)}`);if(d.ip<d.l)rg.push(`${i2s(d.ip+1)}-${i2s(d.l)}`);
+-   if(!rg.length||d.c>30)return;
++  if(!lan.includes(r.if))lan.push(r.if);
++  if(dhcpOn){
++   if(d.c>30)return;
++   const rsv=Math.min(resN,Math.floor((d.l-d.f+1)/2)),ps=d.f+rsv,rg=[];
++   if(d.ip>=ps){if(d.ip>ps)rg.push(`${i2s(ps)}-${i2s(d.ip-1)}`);if(d.ip<d.l)rg.push(`${i2s(d.ip+1)}-${i2s(d.l)}`)}
++   else rg.push(`${i2s(ps)}-${i2s(d.l)}`);
++   if(!rg.length)return;
++   if(rsv>0)pl.push(`# ${r.if}: ${i2s(d.f)}-${i2s(d.f+rsv-1)} dicadangkan untuk IP static (gateway, server, printer, AP)`);
+    pl.push(`/ip pool add name=pool-${r.if} ranges=${rg.join(',')} comment="${cm}"`);
+    dh.push(`/ip dhcp-server add name=dhcp-${r.if} interface=${r.if} address-pool=pool-${r.if} lease-time=1d disabled=no comment="${cm}"`);
+    dh.push(`/ip dhcp-server network add address=${i2s(d.net)}/${d.c} gateway=${i2s(d.ip)} dns-server=${i2s(dns??d.ip)} comment="${cm}"`);
+@@ -367,19 +566,53 @@
+   const d=info(p.ip,p.c);
+   rt.push(`/ip route add dst-address=${i2s(d.net)}/${d.c} gateway=${i2s(g)} comment="${q(r.cm||'Static route')}"`);
+  });
+- const S=['# Dibuat oleh Smart Subnet & MikroTik Enterprise Helper — '+new Date().toLocaleDateString('id-ID')];
+- const sec=(t,l)=>{if(l.length)S.push('',`# ${t}`,...l)};
++ const S=['# Dibuat oleh Smart Subnet & MikroTik Enterprise Helper — '+new Date().toLocaleDateString('id-ID'),
++  '# Impor pada konfigurasi bersih dengan Safe Mode aktif (Ctrl+X). Script ini tidak idempoten: jangan diimpor dua kali.'];
++ const H=S.length,sec=(t,l)=>{if(l.length)S.push('',`# ${t}`,...l)};
+  sec('VLAN',vl);sec('Alamat IP',ad);
+- if(dh.length){sec('DHCP Pool',pl);sec('DHCP Server',dh);if(dns===null)S.push('/ip dns set allow-remote-requests=yes')}
+- if($('#mt-nat').checked){
+-  const w=$('#mt-wan').value.trim();
+-  if(okIf(w))sec('NAT',[`/ip firewall nat add chain=srcnat out-interface=${w} action=masquerade comment="NAT Internet"`]);
++ /* firewall baseline + interface list */
++ if(fwOn){
++  if(!OKIF(w))E.push('Firewall: isi interface WAN yang valid');
++  else{
++   $('#mt-mgmt').value.split(',').map(x=>x.trim()).filter(Boolean).forEach(x=>{if(!OKIF(x))E.push(`Interface manajemen "${x}" tidak valid`);else if(!lan.includes(x))lan.push(x)});
++   if(OKIF(parent)&&parent!==w&&!lan.includes(parent))lan.push(parent);
++   if(lan.includes(w))E.push('Interface WAN tidak boleh sekaligus menjadi interface LAN/manajemen');
++   else{
++    const ml=x=>`:do { ${x} } on-error={}`;
++    sec('Interface List',[ml('/interface list add name=LAN'),ml('/interface list add name=WAN'),ml(`/interface list member add list=WAN interface=${w}`),...lan.map(x=>ml(`/interface list member add list=LAN interface=${x}`))]);
++    const f=(c,t)=>`/ip firewall filter add chain=${c} ${t}`;
++    sec('Firewall baseline (default-deny dari WAN)',[
++     '# Lepas manajemen dari WAN: pastikan interface yang Anda pakai untuk remote ada di list LAN agar tidak terkunci',
++     f('input','action=accept connection-state=established,related,untracked comment="input: allow established"'),
++     f('input','action=drop connection-state=invalid comment="input: drop invalid"'),
++     f('input','action=accept protocol=icmp limit=20,5:packet comment="input: allow ICMP (rate-limit)"'),
++     f('input','action=accept in-interface-list=LAN comment="input: allow LAN/manajemen"'),
++     f('input','action=drop in-interface-list=!LAN comment="input: drop selain LAN (DNS/Winbox/SSH dari WAN)"'),
++     f('forward','action=accept connection-state=established,related,untracked comment="forward: allow established"'),
++     f('forward','action=drop connection-state=invalid comment="forward: drop invalid"'),
++     f('forward','action=drop in-interface-list=WAN connection-state=new connection-nat-state=!dstnat comment="forward: drop WAN->LAN tanpa dst-nat"'),
++     ...(isoOn?['# Isolasi antar-subnet: pasang rule allow (mis. ke server/DNS) SEBELUM rule ini',f('forward','action=drop in-interface-list=LAN out-interface-list=LAN comment="forward: isolasi antar-subnet"')]:[])
++    ]);
++   }
++  }
++ }
++ if(dh.length){sec('DHCP Pool',pl);sec('DHCP Server',dh);
++  if(dns===null){
++   S.push('/ip dns set allow-remote-requests=yes');
++   if(!fwOn){
++    if(OKIF(w))sec('Proteksi DNS (cegah open resolver)',[`/ip firewall filter add chain=input action=drop protocol=udp dst-port=53 in-interface=${w} comment="blok DNS UDP dari WAN"`,`/ip firewall filter add chain=input action=drop protocol=tcp dst-port=53 in-interface=${w} comment="blok DNS TCP dari WAN"`,'# Pastikan kedua rule ini berada di atas rule accept input yang lebih umum']);
++    else E.push('DNS remote request aktif tanpa firewall: aktifkan Firewall baseline atau isi interface WAN agar port 53 dari WAN diblok (atau isi DNS server eksternal)');
++   }
++  }
++ }
++ if(natOn){
++  if(OKIF(w))sec('NAT',[`/ip firewall nat add chain=srcnat out-interface=${w} action=masquerade comment="NAT Internet"`]);
+   else E.push('NAT: isi interface WAN yang valid');
+  }
+  sec('Static Route',rt);
+  er.textContent=E.length?'⚠ '+E.join('; '):'';
+- $('#mt-out').value=S.length>1?S.join('\n'):'';
+- if(S.length===1&&!E.length)er.textContent='⚠ Belum ada data untuk digenerate.';
++ $('#mt-out').value=S.length>H?S.join('\n'):'';
++ if(S.length===H&&!E.length)er.textContent='⚠ Belum ada data untuk digenerate.';
+ }
+ $('#mt-go').onclick=genMT;
+ $('#mt-cp').onclick=()=>$('#mt-out').value?copyText($('#mt-out').value):toast('Belum ada script');
